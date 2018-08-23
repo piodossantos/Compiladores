@@ -54,24 +54,24 @@ import Data.List
 %%
 
 
-Expresion : BExpresion {(EBoolean $1)}
-    | AExpresion {(ENumerical $1)}
-    | List {ListExpresion $1}
+Expresion : BExpresion { $1 }
+    | AExpresion { $1 }
+    | List {$1}
 
 
-List : '['']' {[]}
-    | '[' ElementList ']' {$2}
+List : '['']' {ListExpresion  []}
+    | '[' ElementList ']' {(ListExpresion $2)}
     | '(' List ')' { EParent $2}
     | List '+' List {EConcat $1 $3}
 
 
 ElementList :
-    List {[(ListExpresion $1)]}
-    |AExpresion {[(ENumerical $1)]}
-    |BExpresion {[(EBoolean $1)]}
-    |ElementList ',' List {$1 ++ [(ListExpresion $3)]}
-    |ElementList ',' AExpresion {$1 ++ [(ENumerical $3)]}
-    |ElementList ',' BExpresion {$1 ++ [(EBoolean $3)]}
+    List {[ $1 ]}
+    |AExpresion {[ $1 ]}
+    |BExpresion {[ $1 ]}
+    |ElementList ',' List {$1 ++ [$3]}
+    |ElementList ',' AExpresion {$1 ++ [$3]}
+    |ElementList ',' BExpresion {$1 ++ [$3]}
 
 BExpresion :
     'T' {Etrue}
@@ -105,7 +105,7 @@ AExpresion : num {ENum (read $1::Double)}
     | AExpresion '-' AExpresion {ESub $1 $3}
     | '-' AExpresion %prec NEG { ENeg $2 }
     | '(' AExpresion ')' {EParent $2}
-    |'#' List  { ECount   (ListExpresion $2) }
+    |'#' List  { ECount   ($2) }
 
 
 {
@@ -114,8 +114,6 @@ parseError _ = error "Parse error"
 
 
 data Expresion = ListExpresion [Expresion] | 
-    EBoolean Expresion|
-    ENumerical Expresion|
     EConcat Expresion Expresion|
     Etrue|
     Efalse|
@@ -148,8 +146,6 @@ unparse  (ListExpresion x) = "["++(foldr (\a b-> a ++ if b==[] then b else "," +
     where
         l= map (unparse) x
 
-unparse (ENumerical a) = unparse a
-unparse (EBoolean a)= unparse a
 unparse (EConcat a b) = (unparse a) ++ "++" ++ (unparse b)
 unparse Etrue= "true"
 unparse Efalse = "false"
