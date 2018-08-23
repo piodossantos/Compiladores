@@ -54,77 +54,126 @@ import Data.List
 %%
 
 
-Expresion : BExpresion {(Boolean $1)}
-    | AExpresion {(Numerical $1)}
-    | List {Listing $1}
-
-
-
+Expresion : BExpresion {(EBoolean $1)}
+    | AExpresion {(ENumerical $1)}
+    | List {ListExpresion $1}
 
 
 List : '['']' {[]}
     | '[' ElementList ']' {$2}
-    | '(' List ')' { $2}
-    | List '+' List {$1 ++ $3}
+    | '(' List ')' { EParent $2}
+    | List '+' List {EConcat $1 $3}
 
 
 ElementList :
-    List {[(Listing $1)]}
-    |AExpresion {[(Numerical $1)]}
-    |BExpresion {[(Boolean $1)]}
-    |ElementList ',' List {$1 ++ [(Listing $3)]}
-    |ElementList ',' AExpresion {$1 ++ [(Numerical $3)]}
-    |ElementList ',' BExpresion {$1 ++ [(Boolean $3)]}
+    List {[(ListExpresion $1)]}
+    |AExpresion {[(ENumerical $1)]}
+    |BExpresion {[(EBoolean $1)]}
+    |ElementList ',' List {$1 ++ [(ListExpresion $3)]}
+    |ElementList ',' AExpresion {$1 ++ [(ENumerical $3)]}
+    |ElementList ',' BExpresion {$1 ++ [(EBoolean $3)]}
 
 BExpresion :
-    'T' {True}
-    |'F'{False}
-    |AExpresion '==' AExpresion {$1 == $3}
-    | AExpresion '!=' AExpresion {$1 /= $3}
-    | BExpresion '==' BExpresion {$1 == $3}
-    | BExpresion '!=' BExpresion {$1 /= $3}
-    | AExpresion '<' AExpresion {$1 < $3 }
-    | AExpresion '>' AExpresion {$1 > $3}
-    | AExpresion '<=' AExpresion {$1 <= $3 }
-    | AExpresion '>=' AExpresion {$1 >= $3}
-    | '!' BExpresion {not $2}
-    | BExpresion '&&' BExpresion { $1 && $3}
-    | BExpresion '||' BExpresion { $1 || $3}
-    | '(' BExpresion ')' {$2}
-    | List '!=' List {$1 /= $3}
-    | List '==' List {$1 == $3}
-    | List 'e' List {elem (Listing $1) $3}
-    | AExpresion 'e' List {elem (Numerical $1) $3}
-    | BExpresion 'e' List {elem (Boolean $1) $3}
+    'T' {Etrue}
+    |'F'{Efalse}
+    |AExpresion '==' AExpresion {EEq $1 $3}
+    | AExpresion '!=' AExpresion {EDiff $1 $3}
+    | BExpresion '==' BExpresion {EEq $1 $3}
+    | BExpresion '!=' BExpresion {EDiff $1 $3}
+    | AExpresion '<' AExpresion {EMinor $1 $3 }
+    | AExpresion '>' AExpresion {EGreater $1 $3}
+    | AExpresion '<=' AExpresion {EMinorE $1 $3 }
+    | AExpresion '>=' AExpresion {EGreaterE $1 $3}
+    | '!' BExpresion {ENegation $2}
+    | BExpresion '&&' BExpresion { EConjuntion $1 $3}
+    | BExpresion '||' BExpresion { EDisyuntion $1 $3}
+    | '(' BExpresion ')' {EParent $2}
+    | List '!=' List {EDiff $1 $3}
+    | List '==' List {EEq $1 $3}
+    | List 'e' List {EMember $1 $3}
+    | AExpresion 'e' List {EMember $1 $3}
+    | BExpresion 'e' List {EMember $1 $3}
 
 
-AExpresion : num { read $1::Double}
-    | AExpresion '*' AExpresion {$1 * $3}
-    | AExpresion '/' AExpresion {$1 / $3}
-    | AExpresion '^' AExpresion {$1 ^ (round $3 ::Int)}
-    | AExpresion '//' AExpresion {fromIntegral ($1 `div'` $3)}
-    | AExpresion '%' AExpresion {$1 `mod'` $3}
-    | AExpresion '+' AExpresion {$1 + $3 }
-    | AExpresion '-' AExpresion {$1 - $3}
-    | '-' AExpresion %prec NEG { -$2 }
-    | '(' AExpresion ')' {$2}
-    |'#' List  { (fromIntegral(length($2))) }
+AExpresion : num {ENum (read $1::Double)}
+    | AExpresion '*' AExpresion {EMul $1 $3}
+    | AExpresion '/' AExpresion {EDiv $1 $3}
+    | AExpresion '^' AExpresion {EPot $1 $3}
+    | AExpresion '//' AExpresion {EIDiv $1 $3}
+    | AExpresion '%' AExpresion {EMod $1 $3}
+    | AExpresion '+' AExpresion {EAdd $1 $3 }
+    | AExpresion '-' AExpresion {ESub $1 $3}
+    | '-' AExpresion %prec NEG { ENeg $2 }
+    | '(' AExpresion ')' {EParent $2}
+    |'#' List  { ECount   (ListExpresion $2) }
 
 
 {
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
-data EvaluationResult = Boolean Bool | Numerical Double | Listing [EvaluationResult]
+
+data Expresion = ListExpresion [Expresion] | 
+    EBoolean Expresion|
+    ENumerical Expresion|
+    EConcat Expresion Expresion|
+    Etrue|
+    Efalse|
+    ENum Double|
+    EEq Expresion Expresion|
+    EDiff Expresion Expresion|
+    EMinor Expresion Expresion|
+    EGreater Expresion Expresion|
+    EMinorE Expresion Expresion|
+    EGreaterE Expresion Expresion|
+    ENegation Expresion |
+    EConjuntion Expresion Expresion|
+    EDisyuntion Expresion Expresion|
+    EMember Expresion Expresion|
+    EAdd Expresion Expresion|
+    ESub Expresion Expresion|
+    EDiv Expresion Expresion|
+    EMul Expresion Expresion|
+    EIDiv Expresion Expresion|
+    EPot Expresion Expresion|
+    EMod Expresion Expresion|
+    ENeg Expresion|
+    ECount Expresion|
+    EParent Expresion
     deriving(Show,Eq,Ord)
 
 
-data Expresion = ListExpresion [Expresion] 
-    | AExpresion Double 
-    | BExpresion Bool 
-    | Equal ListExpresion ListExpresion 
-    | Diff ListExpresion ListExpresion
-    deriving(Show,Eq,Ord)
+unparse::Expresion->String
+unparse  (ListExpresion x) = "["++(foldr (\a b-> a ++ if b==[] then b else "," ++ b) "" l)++"]"
+    where
+        l= map (unparse) x
+
+unparse (ENumerical a) = unparse a
+unparse (EBoolean a)= unparse a
+unparse (EConcat a b) = (unparse a) ++ "++" ++ (unparse b)
+unparse Etrue= "true"
+unparse Efalse = "false"
+unparse (ENum a)= show a
+unparse (EEq a b)= (unparse a) ++ "==" ++ (unparse b)
+unparse (EDiff a b) = (unparse a) ++ "/=" ++ (unparse b)
+unparse (EMinor a b) = (unparse a) ++ "<" ++ (unparse b)
+unparse (EGreater a b) = (unparse a) ++ ">" ++ (unparse b)
+unparse (EMinorE a b) = (unparse a) ++ "<=" ++ (unparse b)
+unparse (EGreaterE a b) = (unparse a) ++ ">=" ++ (unparse b)
+unparse (ENegation a) = "!"++(unparse a)
+unparse (EConjuntion a b )= (unparse a) ++ "&&" ++ (unparse b)
+unparse (EDisyuntion a b) = (unparse a) ++ "||" ++ (unparse b)
+unparse (EMember a b) = (unparse a) ++ "<-" ++ (unparse b)
+unparse (EAdd a b) = (unparse a) ++ "+" ++ (unparse b)
+unparse (ESub a b) = (unparse a) ++ "-" ++ (unparse b)
+unparse (EDiv a b )= (unparse a) ++ "/" ++ (unparse b)
+unparse (EMul a b) = (unparse a) ++ "*" ++ (unparse b)
+unparse (EIDiv a b )= (unparse a) ++ "//" ++ (unparse b)
+unparse (EPot a b )= (unparse a) ++ "^"  ++ (unparse b)
+unparse (EMod a b) = (unparse a) ++ "%" ++ (unparse b)
+unparse (ENeg a) = "-" ++ (unparse a)
+unparse (ECount a) = "#"++(unparse a)
+unparse (EParent a) = unparse a
 main = do 
     contents <- getLine
     putStrLn (show (parseCalc (alexScanTokens  contents)))
